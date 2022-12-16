@@ -16,6 +16,7 @@ def preprocessDF(filepath:str):
     data_y = []
     #REMAINING TODO: Replace emojis with sentiment
     #REMAINING TODO: Stemming and lemmatization if needed
+    #REMAINING TODO: Remove all English words
 
     df = pd.read_csv(filepath)
 
@@ -44,7 +45,7 @@ def preprocessDF(filepath:str):
     df['text'].replace(to_replace =r'( )+', value = ' ', regex = True, inplace=True) #remove long spaces
     df['text'].replace(to_replace =r'[0-9٠١٢٣٤٥٦٧٨٩]', value = '', regex = True, inplace=True) #remove numbers
 
-    df['text'].to_csv('processed.csv')
+    df.to_csv('processed.csv')
 
     ### TOKENIZATION
     tokenizer = TweetTokenizer(preserve_case=False, strip_handles=True,
