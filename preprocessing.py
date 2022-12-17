@@ -45,7 +45,7 @@ def preprocessDF(filepath:str):
     df['text'].replace(to_replace =r'( )+', value = ' ', regex = True, inplace=True) #remove long spaces
     df['text'].replace(to_replace =r'[0-9٠١٢٣٤٥٦٧٨٩]', value = '', regex = True, inplace=True) #remove numbers
 
-    df.to_csv('processed.csv')
+    
 
     ### TOKENIZATION
     tokenizer = TweetTokenizer(preserve_case=False, strip_handles=True,
@@ -62,9 +62,11 @@ def preprocessDF(filepath:str):
             if (word not in arabicStopwords):  # remove stopwords
                 tokenizedTweet.append(word)
 
+        df.at[index,'text'] = ' '.join(tokenizedTweet)
         data_x.append(tokenizedTweet)
         data_y.append([item['category'], item['stance']])
 
+    df.to_csv('processed.csv')
 
     return data_x, data_y
     
