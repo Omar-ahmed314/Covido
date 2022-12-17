@@ -67,4 +67,17 @@ def preprocessDF(filepath:str):
 
 
     return data_x, data_y
+
+def get_vocab(tokenized_sentences):
+    '''
+        The function takes tweets each one tokenized into words (list of lists) 
+        Return
+        list of the unique word in the train data (vocab)
+    '''
+    vocab =set()
+    for sen in tokenized_sentences:
+        for word in sen:
+            vocab.add(word)
+    return vocab
+
     
