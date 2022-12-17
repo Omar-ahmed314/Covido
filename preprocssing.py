@@ -5,9 +5,10 @@ import string
 from nltk.corpus import stopwords
 from nltk.tokenize import TweetTokenizer
 
-def preprocessDF(filepath:str):
+def preprocessDF(filepath:str , type:str):
     '''
     The function gets the file path of csv file, produces new file (processed.csv) after preprocessing for exploring (includes stopwords)
+    type represents preprocessing will be applied on train, dev or test data
     Return
     data_x: list of tokenized sentences
     data_y: list of labels
@@ -45,7 +46,7 @@ def preprocessDF(filepath:str):
     df['text'].replace(to_replace =r'( )+', value = ' ', regex = True, inplace=True) #remove long spaces
     df['text'].replace(to_replace =r'[0-9٠١٢٣٤٥٦٧٨٩]', value = '', regex = True, inplace=True) #remove numbers
 
-    df.to_csv('processed.csv')
+    df.to_csv(type+'_processed.csv')
 
     ### TOKENIZATION
     tokenizer = TweetTokenizer(preserve_case=False, strip_handles=True,
