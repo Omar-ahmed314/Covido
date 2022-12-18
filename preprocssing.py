@@ -5,10 +5,9 @@ import string
 from nltk.corpus import stopwords
 from nltk.tokenize import TweetTokenizer
 
-def preprocessDF(filepath:str , type:str):
+def preprocessDF(filepath:str):
     '''
     The function gets the file path of csv file, produces new file (processed.csv) after preprocessing for exploring (includes stopwords)
-    type represents preprocessing will be applied on train, dev or test data
     Return
     data_x: list of tokenized sentences
     data_y: list of labels
@@ -46,7 +45,7 @@ def preprocessDF(filepath:str , type:str):
     df['text'].replace(to_replace =r'( )+', value = ' ', regex = True, inplace=True) #remove long spaces
     df['text'].replace(to_replace =r'[0-9٠١٢٣٤٥٦٧٨٩]', value = '', regex = True, inplace=True) #remove numbers
 
-    df.to_csv(type+'_processed.csv')
+    
 
     ### TOKENIZATION
     tokenizer = TweetTokenizer(preserve_case=False, strip_handles=True,
@@ -63,22 +62,11 @@ def preprocessDF(filepath:str , type:str):
             if (word not in arabicStopwords):  # remove stopwords
                 tokenizedTweet.append(word)
 
+        df.at[index,'text'] = ' '.join(tokenizedTweet)
         data_x.append(tokenizedTweet)
         data_y.append([item['category'], item['stance']])
 
+    df.to_csv('processed.csv')
 
     return data_x, data_y
-
-def get_vocab(tokenized_sentences):
-    '''
-        The function takes tweets each one tokenized into words (list of lists) 
-        Return
-        list of the unique word in the train data (vocab)
-    '''
-    vocab =set()
-    for sen in tokenized_sentences:
-        for word in sen:
-            vocab.add(word)
-    return vocab
-
     
