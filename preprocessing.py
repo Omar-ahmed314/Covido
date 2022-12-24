@@ -21,6 +21,20 @@ categoriesMap = {
     'others':9,
 }
 
+handmadePatterns = [
+r'وفاه' ,
+r'وفاه.*لقاح' ,
+r'عاجل' ,      
+r'وزاره الصحه' ,
+r'رفض' ,
+r'كورونا' ,
+r'يتلقى' ,
+r'لقاح' ,
+r'(استرازينيكا)|(موديرنا)|(سبوتنيك)|(فايزر)|(بيونتيك)|(سينوفارم)' ,
+r'لقاح امن',
+r'تطعيم' ,
+]
+
 def preprocessDF(filepath:str, type:str, getNERandPOS=False):
     '''
     The function gets the file path of csv file, produces new file (type_processed.csv) after preprocessing for exploring
@@ -32,11 +46,13 @@ def preprocessDF(filepath:str, type:str, getNERandPOS=False):
 
     Return
     data_x: list of tokenized sentences
+    handmadeFeature: list of vectors of handamade features
     data_y: list of labels [category, stance]
     ner_data: (ONLY IF getNERandPOS is true)
     pos_data: (ONLY IF getNERandPOS is true)
     '''
     data_x = []
+    handmadeFeatures = []
     pos_data = []
     ner_data = []
 
@@ -106,17 +122,23 @@ def preprocessDF(filepath:str, type:str, getNERandPOS=False):
             tweet_pos = [d.analyses[0].analysis['pos'] for d in disambig]
             pos_data.append(tweet_pos)
 
+        featureVector = [1 if re.search(handmadePatterns[i],item['text'])!=None else 0 for i in range(len(handmadePatterns))] #Handmade feature vector
+        handmadeFeatures.append(featureVector)
+
         data_x.append(tokenizedTweet)
         data_y.append([categoriesMap[item['category']], item['stance']]) #Change categories to numbers
 
     if getNERandPOS:
         df.insert(1,"NER", ner_data)
         df.insert(1,"POS", pos_data)
+    
+    for i in range(len(handmadePatterns)):
+        df.insert(1+i,"feature"+str(i), [item[i] for item in handmadeFeatures])
 
     df.to_csv(type+'_processed.csv', index=False)
 
     if getNERandPOS:
-        return data_x, data_y, ner_data, pos_data
+        return data_x, handmadeFeatures, data_y, ner_data, pos_data
     else:
-        return data_x,data_y
+        return data_x, handmadeFeatures, data_y
     
