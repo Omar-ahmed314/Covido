@@ -4,6 +4,7 @@ import numpy as np
 import string
 from nltk.corpus import stopwords
 from nltk.tokenize import TweetTokenizer
+from nltk.stem.isri import ISRIStemmer
 
 # from camel_tools.ner import NERecognizer
 # from camel_tools.disambig.mle import MLEDisambiguator
@@ -35,7 +36,7 @@ r'لقاح امن',
 r'تطعيم' ,
 ]
 
-def preprocessDF(filepath:str, type:str, getNERandPOS=False):
+def preprocessDF(filepath:str, type:str, getNERandPOS=False, applyStemming=False):
     '''
     The function gets the file path of csv file, produces new file (type_processed.csv) after preprocessing for exploring
 
@@ -43,6 +44,7 @@ def preprocessDF(filepath:str, type:str, getNERandPOS=False):
     filepath: path of the input csv file
     type: train/test/etc.. for output name type_processed.csv
     getNERandPOS: OPTIONAL (default False) boolean value if we want to return NER and POS and add it to output file
+    applyStemming: OPTIONAL (default False) to apply nltk arabic stemming
 
     Return
     data_x: list of tokenized sentences
@@ -103,6 +105,7 @@ def preprocessDF(filepath:str, type:str, getNERandPOS=False):
 
     ner = None if not getNERandPOS else getNERecognizer.pretrained()
     mle = None if not getNERandPOS else MLEDisambiguator.pretrained()
+    st = None if not applyStemming else ISRIStemmer()
 
 
     for index, item in df.iterrows():
@@ -113,9 +116,6 @@ def preprocessDF(filepath:str, type:str, getNERandPOS=False):
             if (word not in arabicStopwords):  # remove stopwords
                 tokenizedTweet.append(word)
 
-        df.at[index,'text'] = ' '.join(tokenizedTweet)
-        df.at[index,'category'] = categoriesMap[item['category']]
-
         if getNERandPOS:
             ner_data.append(ner.predict_sentence(tokenizedTweet))
             disambig = mle.disambiguate(tokenizedTweet)
@@ -124,6 +124,12 @@ def preprocessDF(filepath:str, type:str, getNERandPOS=False):
 
         featureVector = [1 if re.search(handmadePatterns[i],item['text'])!=None else 0 for i in range(len(handmadePatterns))] #Handmade feature vector
         handmadeFeatures.append(featureVector)
+
+        if applyStemming: #Applying stemming if needed
+            tokenizedTweet = [st.stem(word) for word in tokenizedTweet]
+
+        df.at[index,'text'] = ' '.join(tokenizedTweet)
+        df.at[index,'category'] = categoriesMap[item['category']]
 
         data_x.append(tokenizedTweet)
         data_y.append([categoriesMap[item['category']], item['stance']]) #Change categories to numbers
