@@ -6,6 +6,10 @@ from nltk.corpus import stopwords
 from nltk.tokenize import TweetTokenizer
 from nltk.stem.isri import ISRIStemmer
 
+# from emoji import demojize
+# from translate import Translator
+# translator= Translator(to_lang="Arabic")
+
 # from camel_tools.ner import NERecognizer
 # from camel_tools.disambig.mle import MLEDisambiguator
 
@@ -20,6 +24,49 @@ categoriesMap = {
     'personal':7,
     'unrelated': 8,
     'others':9,
+}
+
+emojisTranslation = {
+    '♀': 'انثى',
+    '💉': 'حقنه',
+    '🌹': 'ورد',
+    '🌷': 'ورد',
+    '✅': 'صحيح',
+    '✔':'صحيح',
+    '😀': 'يضحك',
+    '😁': 'يضحك',
+    '😂': 'يضحك',
+    '😅': 'محرج',
+    '💔': 'قلب مكسور',
+    '🔴': 'تحذير',
+    '⭕': 'تحذير',
+    '📌': 'تحذير',
+    '📍': 'تحذير',
+    '❗':'تحذير',
+    '⛔':'تحذير',
+     '⚠':'تحذير',
+    '😍': 'اعجاب',
+    '😎': 'فخر',
+    '💪': 'قوه',
+    '👍': 'حسنا',
+    '🙄': 'استغراب',
+    '👌': 'ممتاز',
+    '✌': 'نصر',
+    '✋': 'يد',
+    '💚': 'قلب',
+     '❤': 'قلب',
+     '💙': 'قلب',
+     '💛':'قلب',
+     '📸':'كاميرا',
+     '🎥': 'كاميرا',
+    '👇': 'اسفل',
+    '😉': 'غمزه',
+    '😜': 'غمزه',
+    '😔': 'محبط',
+    '😭': 'يبكي',
+    '♂':'ذكر',
+     '✍':'يكتب',
+     '😷': 'كمامه',
 }
 
 handmadePatterns = [
@@ -64,6 +111,11 @@ def preprocessDF(filepath:str, type:str, getNERandPOS=False, applyStemming=False
 
     ### SOME TWEET CLEANING
     df['text']=df['text'].str.lower() #English words to lower case
+
+    for emojiKey in emojisTranslation.keys(): #REPLACE EMOJIS WITH MEANINGS
+        df['text'].replace(to_replace = emojiKey, value =' '+emojisTranslation[emojiKey]+' ', regex = True, inplace=True) 
+
+
     df['text'].replace(to_replace =r'http[\da-zA-Z:/.-]*\b', value = '', regex = True, inplace=True) #Removing URLs
     df['text'].replace(to_replace =r'<lf>', value = ' ', regex = True, inplace=True) #Remove tags
     df['text'].replace(to_replace =r'#', value = '', regex = True, inplace=True) #Remove hashtags
@@ -148,3 +200,40 @@ def preprocessDF(filepath:str, type:str, getNERandPOS=False, applyStemming=False
     else:
         return data_x, handmadeFeatures, data_y
     
+
+def demojizeArabic(emo):
+  res=demojize(emo, delimiters=("", ""))
+  english = res.replace("_"," ")
+  if len(english) < 3:
+    return ''
+  translation = translator.translate(english)
+  return translation
+
+def getMostFrequentEmojisTranslation(data, countThreshold:int):
+    emojiPattern = r'[\u263a-\U0001f645]'
+    usedEmojis = set()
+    emojisCount = {}
+    emojisMap = {}
+    for index, item in data.iterrows():
+        if re.search(emojiPattern,item['text'])!=None:
+            regex = re.compile(emojiPattern)
+            #print(regex.findall(item['text']))
+            for emoji in set(regex.findall(item['text'])):
+                usedEmojis.add(emoji)
+                if emoji not in emojisCount.keys():
+                    emojisCount[emoji] = 1
+                else:
+                    emojisCount[emoji] += 1
+    keysToBeRemoved = []
+    for key in emojisCount.keys():
+        if emojisCount[key]< countThreshold:
+            keysToBeRemoved.append(key)
+
+    for key in keysToBeRemoved:
+        usedEmojis.remove(key)
+
+    for emoji in usedEmojis:
+        emojisMap[emoji] = demojizeArabic(emoji)
+    
+    return emojisMap
+
