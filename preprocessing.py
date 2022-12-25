@@ -4,6 +4,11 @@ import numpy as np
 import string
 from nltk.corpus import stopwords
 from nltk.tokenize import TweetTokenizer
+from nltk.stem.isri import ISRIStemmer
+
+# from emoji import demojize
+# from translate import Translator
+# translator= Translator(to_lang="Arabic")
 
 # from camel_tools.ner import NERecognizer
 # from camel_tools.disambig.mle import MLEDisambiguator
@@ -21,6 +26,49 @@ categoriesMap = {
     'others':9,
 }
 
+emojisTranslation = {
+    '♀': 'انثى',
+    '💉': 'حقنه',
+    '🌹': 'ورد',
+    '🌷': 'ورد',
+    '✅': 'صحيح',
+    '✔':'صحيح',
+    '😀': 'يضحك',
+    '😁': 'يضحك',
+    '😂': 'يضحك',
+    '😅': 'محرج',
+    '💔': 'قلب مكسور',
+    '🔴': 'تحذير',
+    '⭕': 'تحذير',
+    '📌': 'تحذير',
+    '📍': 'تحذير',
+    '❗':'تحذير',
+    '⛔':'تحذير',
+     '⚠':'تحذير',
+    '😍': 'اعجاب',
+    '😎': 'فخر',
+    '💪': 'قوه',
+    '👍': 'حسنا',
+    '🙄': 'استغراب',
+    '👌': 'ممتاز',
+    '✌': 'نصر',
+    '✋': 'يد',
+    '💚': 'قلب',
+     '❤': 'قلب',
+     '💙': 'قلب',
+     '💛':'قلب',
+     '📸':'كاميرا',
+     '🎥': 'كاميرا',
+    '👇': 'اسفل',
+    '😉': 'غمزه',
+    '😜': 'غمزه',
+    '😔': 'محبط',
+    '😭': 'يبكي',
+    '♂':'ذكر',
+     '✍':'يكتب',
+     '😷': 'كمامه',
+}
+
 handmadePatterns = [
 r'وفاه' ,
 r'وفاه.*لقاح' ,
@@ -35,7 +83,7 @@ r'لقاح امن',
 r'تطعيم' ,
 ]
 
-def preprocessDF(filepath:str, type:str, getNERandPOS=False):
+def preprocessDF(filepath:str, type:str, getNERandPOS=False, applyStemming=False):
     '''
     The function gets the file path of csv file, produces new file (type_processed.csv) after preprocessing for exploring
 
@@ -43,6 +91,7 @@ def preprocessDF(filepath:str, type:str, getNERandPOS=False):
     filepath: path of the input csv file
     type: train/test/etc.. for output name type_processed.csv
     getNERandPOS: OPTIONAL (default False) boolean value if we want to return NER and POS and add it to output file
+    applyStemming: OPTIONAL (default False) to apply nltk arabic stemming
 
     Return
     data_x: list of tokenized sentences
@@ -62,6 +111,11 @@ def preprocessDF(filepath:str, type:str, getNERandPOS=False):
 
     ### SOME TWEET CLEANING
     df['text']=df['text'].str.lower() #English words to lower case
+
+    for emojiKey in emojisTranslation.keys(): #REPLACE EMOJIS WITH MEANINGS
+        df['text'].replace(to_replace = emojiKey, value =' '+emojisTranslation[emojiKey]+' ', regex = True, inplace=True) 
+
+
     df['text'].replace(to_replace =r'http[\da-zA-Z:/.-]*\b', value = '', regex = True, inplace=True) #Removing URLs
     df['text'].replace(to_replace =r'<lf>', value = ' ', regex = True, inplace=True) #Remove tags
     df['text'].replace(to_replace =r'#', value = '', regex = True, inplace=True) #Remove hashtags
@@ -103,6 +157,7 @@ def preprocessDF(filepath:str, type:str, getNERandPOS=False):
 
     ner = None if not getNERandPOS else getNERecognizer.pretrained()
     mle = None if not getNERandPOS else MLEDisambiguator.pretrained()
+    st = None if not applyStemming else ISRIStemmer()
 
 
     for index, item in df.iterrows():
@@ -113,9 +168,6 @@ def preprocessDF(filepath:str, type:str, getNERandPOS=False):
             if (word not in arabicStopwords):  # remove stopwords
                 tokenizedTweet.append(word)
 
-        df.at[index,'text'] = ' '.join(tokenizedTweet)
-        df.at[index,'category'] = categoriesMap[item['category']]
-
         if getNERandPOS:
             ner_data.append(ner.predict_sentence(tokenizedTweet))
             disambig = mle.disambiguate(tokenizedTweet)
@@ -124,6 +176,12 @@ def preprocessDF(filepath:str, type:str, getNERandPOS=False):
 
         featureVector = [1 if re.search(handmadePatterns[i],item['text'])!=None else 0 for i in range(len(handmadePatterns))] #Handmade feature vector
         handmadeFeatures.append(featureVector)
+
+        if applyStemming: #Applying stemming if needed
+            tokenizedTweet = [st.stem(word) for word in tokenizedTweet]
+
+        df.at[index,'text'] = ' '.join(tokenizedTweet)
+        df.at[index,'category'] = categoriesMap[item['category']]
 
         data_x.append(tokenizedTweet)
         data_y.append([categoriesMap[item['category']], item['stance']]) #Change categories to numbers
@@ -142,3 +200,40 @@ def preprocessDF(filepath:str, type:str, getNERandPOS=False):
     else:
         return data_x, handmadeFeatures, data_y
     
+
+def demojizeArabic(emo):
+  res=demojize(emo, delimiters=("", ""))
+  english = res.replace("_"," ")
+  if len(english) < 3:
+    return ''
+  translation = translator.translate(english)
+  return translation
+
+def getMostFrequentEmojisTranslation(data, countThreshold:int):
+    emojiPattern = r'[\u263a-\U0001f645]'
+    usedEmojis = set()
+    emojisCount = {}
+    emojisMap = {}
+    for index, item in data.iterrows():
+        if re.search(emojiPattern,item['text'])!=None:
+            regex = re.compile(emojiPattern)
+            #print(regex.findall(item['text']))
+            for emoji in set(regex.findall(item['text'])):
+                usedEmojis.add(emoji)
+                if emoji not in emojisCount.keys():
+                    emojisCount[emoji] = 1
+                else:
+                    emojisCount[emoji] += 1
+    keysToBeRemoved = []
+    for key in emojisCount.keys():
+        if emojisCount[key]< countThreshold:
+            keysToBeRemoved.append(key)
+
+    for key in keysToBeRemoved:
+        usedEmojis.remove(key)
+
+    for emoji in usedEmojis:
+        emojisMap[emoji] = demojizeArabic(emoji)
+    
+    return emojisMap
+
