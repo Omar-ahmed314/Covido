@@ -83,20 +83,21 @@ r'لقاح امن',
 r'تطعيم' ,
 ]
 
-def preprocessDF(filepath:str, type:str, getNERandPOS=False, applyStemming=False):
+def preprocessDF(filepath:str, type:str, isTest=False, getNERandPOS=False, applyStemming=False):
     '''
     The function gets the file path of csv file, produces new file (type_processed.csv) after preprocessing for exploring
 
     Inputs
     filepath: path of the input csv file
     type: train/test/etc.. for output name type_processed.csv
+    isTest: OPTIONAL to remove labels processing
     getNERandPOS: OPTIONAL (default False) boolean value if we want to return NER and POS and add it to output file
     applyStemming: OPTIONAL (default False) to apply nltk arabic stemming
 
     Return
     data_x: list of tokenized sentences
     handmadeFeature: list of vectors of handamade features
-    data_y: list of labels [category, stance]
+    data_y: list of labels [category, stance] (Empty IF IS TEST)
     ner_data: (ONLY IF getNERandPOS is true)
     pos_data: (ONLY IF getNERandPOS is true)
     '''
@@ -181,10 +182,13 @@ def preprocessDF(filepath:str, type:str, getNERandPOS=False, applyStemming=False
             tokenizedTweet = [st.stem(word) for word in tokenizedTweet]
 
         df.at[index,'text'] = ' '.join(tokenizedTweet)
-        df.at[index,'category'] = categoriesMap[item['category']]
+
+        if not isTest:
+            df.at[index,'category'] = categoriesMap[item['category']]
 
         data_x.append(tokenizedTweet)
-        data_y.append([categoriesMap[item['category']], item['stance']]) #Change categories to numbers
+        if not isTest:
+            data_y.append([categoriesMap[item['category']], item['stance']]) #Change categories to numbers
 
     if getNERandPOS:
         df.insert(1,"NER", ner_data)
